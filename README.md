@@ -51,37 +51,37 @@ All screenshots below are from `http://localhost:8000/docs`, using "Try it out" 
 
 **1. Overview — all endpoints listed:**
 
-![Swagger UI overview](screenshots/swagger-overview.png)
+![Swagger UI overview](screenshots/Screenshot%202026-07-28%20235346.png)
 
 **2. POST /tasks → 201 Created:**
 
-![POST /tasks 201](screenshots/post-tasks-201.png)
+![POST /tasks 201](screenshots/Screenshot%202026-07-28%20235816.png)
 
 **3. GET /tasks → 200, seed data:**
 
-![GET /tasks 200](screenshots/get-tasks-200.png)
+![GET /tasks 200](screenshots/Screenshot%202026-07-29%20000301.png)
 
 **4. GET /tasks/3 → 200, single task:**
 
-![GET /tasks/3 200](screenshots/get-task-by-id-200.png)
+![GET /tasks/3 200](screenshots/Screenshot%202026-07-29%20000457.png)
 
 **5. PUT /tasks/3 → 200, title updated:**
 
-![PUT /tasks/3 200](screenshots/put-task-200.png)
+![PUT /tasks/3 200](screenshots/Screenshot%202026-07-29%20000609.png)
 
 **6. DELETE /tasks/3 → 204 No Content:**
 
-![DELETE /tasks/3 204](screenshots/delete-task-204.png)
+![DELETE /tasks/3 204](screenshots/Screenshot%202026-07-29%20000654.png)
 
 **7. GET /tasks → 200, confirms task 3 is gone:**
 
-![GET /tasks after delete](screenshots/get-tasks-after-delete-200.png)
+![GET /tasks after delete](screenshots/Screenshot%202026-07-29%20000713.png)
 
 ## The mortality experiment
 
 Tasks are stored in a plain Python list in memory (`tasks = [...]` at the top of `main.py`). To test this, I created and deleted tasks, then restarted the server (`Ctrl+C` and re-ran `uvicorn`), and called `GET /tasks` again:
 
-![Mortality experiment — server restarted, data reset](screenshots/mortality-experiment.png)
+![Mortality experiment — server restarted, data reset](screenshots/Screenshot%202026-07-29%20000954.png)
 
 After the restart, only the 3 original seed tasks (`Buy milk`, `Write README`, `Learn FastAPI`) came back — every task I'd created or modified during testing was gone. This confirms the list only exists inside the running process's memory; there's no file or database backing it, so nothing survives a restart. This is exactly why Week 3 introduces a real database — to make data outlive the process.
 
