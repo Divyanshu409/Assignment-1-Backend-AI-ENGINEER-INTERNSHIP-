@@ -25,3 +25,37 @@ def root():
 @app.get("/health", summary="Health check", description="Returns ok if the server is alive.")
 def health():
     return {"status": "ok"}
+
+
+# In-memory "database" — resets whenever the server restarts.
+tasks = [
+    {"id": 1, "title": "Buy milk", "done": False},
+    {"id": 2, "title": "Write README", "done": False},
+    {"id": 3, "title": "Learn FastAPI", "done": True},
+]
+next_id = 4
+
+
+def find_task(task_id: int):
+    return next((t for t in tasks if t["id"] == task_id), None)
+
+
+@app.get(
+    "/tasks",
+    summary="List tasks",
+    description="Returns all tasks.",
+)
+def list_tasks():
+    return tasks
+
+
+@app.get(
+    "/tasks/{task_id}",
+    summary="Get one task",
+    description="Returns a single task by id, or 404 if it doesn't exist.",
+)
+def get_task(task_id: int):
+    task = find_task(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+    return task
