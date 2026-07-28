@@ -54,9 +54,33 @@ def find_task(task_id: int):
 @app.get(
     "/tasks",
     summary="List tasks",
-    description="Returns all tasks.",
+    description="Returns all tasks. Supports optional filtering by `done` and `search` query params.",
 )
-def list_tasks():
+def list_tasks(done: Optional[bool] = None, search: Optional[str] = None):
+    result = tasks
+    if done is not None:
+        result = [t for t in result if t["done"] == done]
+    if search:
+        result = [t for t in result if search.lower() in t["title"].lower()]
+    return result
+
+
+@app.get("/stats", summary="Task stats", description="Returns counts of total, done, and open tasks.")
+def stats():
+    total = len(tasks)
+    done_count = sum(1 for t in tasks if t["done"])
+    return {"total": total, "done": done_count, "open": total - done_count}
+
+
+@app.post("/reset", summary="Reset tasks", description="Restores the 3 example tasks. Handy for demos.")
+def reset_tasks():
+    global tasks, next_id
+    tasks = [
+        {"id": 1, "title": "Buy milk", "done": False},
+        {"id": 2, "title": "Write README", "done": False},
+        {"id": 3, "title": "Learn FastAPI", "done": True},
+    ]
+    next_id = 4
     return tasks
 
 
