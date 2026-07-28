@@ -38,7 +38,6 @@ def health():
     return {"status": "ok"}
 
 
-# In-memory "database" — resets whenever the server restarts.
 tasks = [
     {"id": 1, "title": "Buy milk", "done": False},
     {"id": 2, "title": "Write README", "done": False},
