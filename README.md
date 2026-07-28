@@ -63,3 +63,10 @@ Tasks are stored in a plain Python list in memory (`tasks = [...]` at the top of
 - Search: `GET /tasks?search=milk`
 - Stats endpoint: `GET /stats`
 - Seed & reset: `POST /reset`
+
+## Stage 7 — AI rematch
+
+See [`ai-version/AI_VS_ME.md`](ai-version/AI_VS_ME.md) for the full writeup: the prompt I gave
+an AI assistant, what it got right, two real bugs I found by running my Stage 4 checkpoint curls
+against its output (wrong status code on invalid input, whitespace-only titles slipping through),
+and the improved prompt + rematch that fixed both.
