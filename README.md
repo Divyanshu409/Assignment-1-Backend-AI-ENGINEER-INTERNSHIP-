@@ -45,17 +45,45 @@ content-type: application/json
 {"id":4,"title":"Buy milk","done":false}
 ```
 
-## Swagger UI
+## Swagger UI — full CRUD cycle, tested live
 
-Screenshot of `/docs` with "Try it out" working for the full CRUD cycle:
+All screenshots below are from `http://localhost:8000/docs`, using "Try it out" for every endpoint.
 
-`[insert screenshot here — screenshots.png]`
+**1. Overview — all endpoints listed:**
 
-*(Note: take this yourself by running the server locally and visiting `/docs` in your browser — screenshot tooling wasn't available in the build environment.)*
+![Swagger UI overview](screenshots/swagger-overview.png)
+
+**2. POST /tasks → 201 Created:**
+
+![POST /tasks 201](screenshots/post-tasks-201.png)
+
+**3. GET /tasks → 200, seed data:**
+
+![GET /tasks 200](screenshots/get-tasks-200.png)
+
+**4. GET /tasks/3 → 200, single task:**
+
+![GET /tasks/3 200](screenshots/get-task-by-id-200.png)
+
+**5. PUT /tasks/3 → 200, title updated:**
+
+![PUT /tasks/3 200](screenshots/put-task-200.png)
+
+**6. DELETE /tasks/3 → 204 No Content:**
+
+![DELETE /tasks/3 204](screenshots/delete-task-204.png)
+
+**7. GET /tasks → 200, confirms task 3 is gone:**
+
+![GET /tasks after delete](screenshots/get-tasks-after-delete-200.png)
 
 ## The mortality experiment
 
-Tasks are stored in a plain Python list in memory (`tasks = [...]` at the top of `main.py`). If you create new tasks and then restart the server (`Ctrl+C` and re-run `uvicorn`), every task you added is gone — only the 3 hardcoded seed tasks come back. This happens because the list only exists inside the running process's memory; there's no file or database backing it, so nothing survives a restart. This is exactly why Week 3 introduces a real database — to make data outlive the process.
+Tasks are stored in a plain Python list in memory (`tasks = [...]` at the top of `main.py`). To test this, I created and deleted tasks, then restarted the server (`Ctrl+C` and re-ran `uvicorn`), and called `GET /tasks` again:
+
+![Mortality experiment — server restarted, data reset](screenshots/mortality-experiment.png)
+
+After the restart, only the 3 original seed tasks (`Buy milk`, `Write README`, `Learn FastAPI`) came back — every task I'd created or modified during testing was gone. This confirms the list only exists inside the running process's memory; there's no file or database backing it, so nothing survives a restart. This is exactly why Week 3 introduces a real database — to make data outlive the process.
 
 ## Extras built
 
