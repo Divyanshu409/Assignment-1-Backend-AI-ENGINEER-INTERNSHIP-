@@ -45,13 +45,18 @@ content-type: application/json
 {"id":4,"title":"Buy milk","done":false}
 ```
 
-## Swagger UI
+## Screenshots
 
-Screenshot of `/docs` with "Try it out" working for the full CRUD cycle:
+Checkpoints from building and testing the API (Swagger UI, curl requests, and status codes):
 
-`[insert screenshot here — screenshots.png]`
-
-*(Note: take this yourself by running the server locally and visiting `/docs` in your browser — screenshot tooling wasn't available in the build environment.)*
+![Screenshot 1](screenshots/Screenshot%202026-07-28%20235346.png)
+![Screenshot 2](screenshots/Screenshot%202026-07-28%20235816.png)
+![Screenshot 3](screenshots/Screenshot%202026-07-29%20000301.png)
+![Screenshot 4](screenshots/Screenshot%202026-07-29%20000457.png)
+![Screenshot 5](screenshots/Screenshot%202026-07-29%20000609.png)
+![Screenshot 6](screenshots/Screenshot%202026-07-29%20000654.png)
+![Screenshot 7](screenshots/Screenshot%202026-07-29%20000713.png)
+![Screenshot 8](screenshots/Screenshot%202026-07-29%20000954.png)
 
 ## The mortality experiment
 
