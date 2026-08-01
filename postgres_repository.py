@@ -1,10 +1,3 @@
-"""
-Postgres implementation of TaskRepository.
-
-Same interface as SQLiteTaskRepository (repository.py). main.py swaps
-between them based on DB_BACKEND — service and route code never changes.
-"""
-
 from contextlib import contextmanager
 from typing import Optional, List
 
