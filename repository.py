@@ -1,14 +1,3 @@
-"""
-Task repository layer.
-
-TaskRepository defines the interface the service/routes depend on.
-SQLiteTaskRepository is A2's original storage, refactored out of main.py
-so it conforms to that interface.
-PostgresTaskRepository (postgres_repository.py) implements the same
-interface against Postgres. main.py picks one based on DB_BACKEND in .env
-and never changes either way.
-"""
-
 import sqlite3
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
@@ -23,11 +12,10 @@ SEED_TASKS = [
 
 
 class TaskRepository(ABC):
-    """Every backend (SQLite, Postgres, ...) must implement this exact interface."""
 
     @abstractmethod
     def init(self) -> None:
-        """Create schema if missing, and seed if empty."""
+       
 
     @abstractmethod
     def list(self, done: Optional[bool] = None, search: Optional[str] = None) -> 'List[dict]':
@@ -43,11 +31,11 @@ class TaskRepository(ABC):
 
     @abstractmethod
     def update(self, task_id: int, title: Optional[str], done: Optional[bool]) -> Optional[dict]:
-        """Returns None if task_id doesn't exist."""
+        
 
     @abstractmethod
     def delete(self, task_id: int) -> bool:
-        """Returns False if task_id doesn't exist."""
+        
 
     @abstractmethod
     def stats(self) -> dict:
@@ -59,7 +47,7 @@ class TaskRepository(ABC):
 
 
 class SQLiteTaskRepository(TaskRepository):
-    """A2's storage: a local tasks.db file. Kept as-is for local/no-Docker runs."""
+   
 
     def __init__(self, db_file: str = "tasks.db"):
         self.db_file = db_file
