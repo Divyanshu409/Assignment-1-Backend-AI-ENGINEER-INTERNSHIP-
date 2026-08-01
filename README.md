@@ -1,72 +1,129 @@
 # Task API
 
-A small in-memory to-do list API built for **FlyRank Internship — Backend Track, Week 2, Assignment A1**.
+A to-do list API with full CRUD, built for **FlyRank Internship — Backend Track**.
 
-Manages tasks with full CRUD (Create, Read, Update, Delete), built with **Python + FastAPI**. Data lives in memory only — it resets whenever the server restarts (see "The mortality experiment" below).
+- **A1** (Week 2): in-memory Python list, gone on every restart.
+- **A2** (Week 3): swapped the list for SQLite (`tasks.db`), but storage code lived
+  directly inside the FastAPI routes — no repository, no `.env`, no Docker.
+- **A3** (this version): Postgres running in Docker, `docker compose up` for the
+  whole stack, and a real repository layer so the routes don't know or care
+  which database is behind them.
+
+## Honesty note on A2's layering
+
+The assignment brief for A3 assumes A2 already had a repository interface
+sitting behind an in-memory store, ready to be swapped for Postgres. **A2
+actually didn't have that seam** — `main.py` called `sqlite3` directly inside
+every route handler. So step 4 of this assignment ("write a Postgres
+repository implementing the same interface as your in-memory one, and swap it
+in") required creating that interface for the first time, not just adding a
+second implementation of an existing one.
+
+What I did:
+
+- `repository.py` — defines the abstract `TaskRepository` interface (`list`,
+  `get`, `create`, `update`, `delete`, `stats`, `reset`, `init`), plus
+  `SQLiteTaskRepository`, which is A2's exact old logic moved out of
+  `main.py` and made to conform to that interface.
+- `postgres_repository.py` — `PostgresTaskRepository`, a second
+  implementation of the same interface, using `psycopg2`.
+- `main.py` — routes now call `repo.<method>()` only. They contain **zero**
+  SQL and **zero** knowledge of which database is running. Which
+  implementation `repo` points to is decided once, at startup, from
+  `DB_BACKEND` in `.env`.
+
+So the proof the assignment is after — "switching storage changes only one
+file" — is true starting now, even though it wasn't true yet in A2.
+`postgres_repository.py` is the one new file; `main.py`'s route bodies are
+identical regardless of backend.
+
+## Architecture
+
+```
+main.py                  → FastAPI routes, call repo.* only
+repository.py             → TaskRepository interface + SQLiteTaskRepository
+postgres_repository.py    → PostgresTaskRepository (same interface)
+init.sql                  → creates the tasks table + seeds it, runs once
+                             when the Postgres volume is first created
+docker-compose.yml         → postgres (+redis) + app, one command
+Dockerfile                 → builds the app image
+.env.example / .env        → DB_BACKEND, DATABASE_URL, Postgres credentials
+```
 
 ## How to run it
 
-Requires Python 3.10+.
+### Full stack (Postgres in Docker) — the A3 way
+
+```bash
+cp .env.example .env      # already has working defaults for compose
+docker compose up
+```
+
+This starts Postgres (with a named volume `pgdata` so data survives
+restarts), Redis, and the app, and runs `init.sql` the first time the
+Postgres volume is created. The API is at `http://localhost:8000`, docs at
+`http://localhost:8000/docs`. Postgres is also published on `localhost:5432`
+if you want to `psql` in directly.
+
+### App only, against local SQLite (the A2 way, no Docker needed)
 
 ```bash
 pip install -r requirements.txt
-python3 -m uvicorn main:app --reload
+DB_BACKEND=sqlite python3 -m uvicorn main:app --reload
 ```
-
-The server starts on `http://localhost:8000`. Interactive docs (Swagger UI) are available at `http://localhost:8000/docs`.
 
 ## Endpoints
 
-| Method | Path            | Description                              |
-|--------|-----------------|-------------------------------------------|
-| GET    | `/`             | API info (name, version, endpoints)       |
-| GET    | `/health`       | Health check — `{"status": "ok"}`         |
-| GET    | `/tasks`        | List all tasks (supports `?done=` and `?search=` filters) |
-| GET    | `/tasks/{id}`   | Get a single task by id (404 if missing)  |
-| POST   | `/tasks`        | Create a task — requires non-empty `title` (400 if missing) |
-| PUT    | `/tasks/{id}`   | Update a task's `title` and/or `done`     |
-| DELETE | `/tasks/{id}`   | Delete a task (204 on success)            |
-| GET    | `/stats`        | Task counts — `{"total", "done", "open"}` |
-| POST   | `/reset`        | Restores the 3 example seed tasks         |
+| Method | Path              | Description                                                  |
+|--------|-------------------|----------------------------------------------------------------|
+| GET    | `/`               | API info, including which backend (`sqlite`/`postgres`) is live |
+| GET    | `/health`         | Health check                                                  |
+| GET    | `/redis-health`   | Stretch: pings Redis via `REDIS_URL`                           |
+| GET    | `/tasks`          | List tasks (`?done=`, `?search=` filters)                      |
+| GET    | `/tasks/{id}`     | Get one task (404 if missing)                                  |
+| POST   | `/tasks`          | Create a task — requires non-empty `title` (400 if missing)    |
+| PUT    | `/tasks/{id}`     | Update `title` and/or `done`                                   |
+| DELETE | `/tasks/{id}`     | Delete a task (204)                                             |
+| GET    | `/stats`          | `{"total", "done", "open"}`                                    |
+| POST   | `/reset`          | Restores the 3 seed tasks                                      |
 
-Status codes used: `200` reads, `201` create, `204` delete, `400` invalid body, `404` unknown id — each error returns `{"error": "..."}`.
+Status codes and error shape (`{"error": "..."}`) are unchanged from A2.
 
-## Example request
+## Proving persistence
 
-```
-$ curl -i -X POST http://localhost:8000/tasks -H "Content-Type: application/json" -d '{"title":"Buy milk"}'
+Checked with the app running against the Dockerized Postgres:
 
-HTTP/1.1 201 Created
-date: Tue, 28 Jul 2026 18:03:46 GMT
-server: uvicorn
-content-length: 40
-content-type: application/json
+1. `docker compose up -d`
+2. `curl -X POST http://localhost:8000/tasks -d '{"title":"survive me"}' -H 'Content-Type: application/json'`
+3. `docker compose restart app db` — both containers restart
+4. `curl http://localhost:8000/tasks` → `"survive me"` is still there
 
-{"id":4,"title":"Buy milk","done":false}
-```
+I validated the same logic outside Docker too, using a local Postgres
+install: created a row through the API, killed the Python process entirely
+(simulating an app restart), and confirmed with `psql` that the row was
+still in the table. Then restarted the Postgres server itself and confirmed
+the row survived that too — because the data lives in Postgres's own
+storage (the `pgdata` volume in Docker), not in the app process.
 
-## Swagger UI
+Compare with `DB_BACKEND=sqlite` and no volume mounted for `tasks.db`: kill
+the container and the file — and the rows — go with it. That contrast is
+the actual point of this assignment.
 
-Screenshot of `/docs` with "Try it out" working for the full CRUD cycle:
+## .env / secrets
 
-`[insert screenshot here — screenshots.png]`
+`.env` is gitignored; `.env.example` (committed) documents every variable:
+`DB_BACKEND`, `SQLITE_DB_FILE`, `DATABASE_URL`, and the three
+`POSTGRES_*` values the `db` service reads. `docker-compose.yml` overrides
+`DATABASE_URL` inside the `app` container to point at `db:5432` (the
+compose service name) rather than `localhost`, since containers don't share
+`localhost` with the host.
 
-*(Note: take this yourself by running the server locally and visiting `/docs` in your browser — screenshot tooling wasn't available in the build environment.)*
+## Stretch: Redis
 
-## The mortality experiment
+`redis` is in `docker-compose.yml` alongside `db`, and `GET /redis-health`
+pings it via `REDIS_URL` (`redis://redis:6379/0` inside compose). Wired up
+now so W4 can build on it directly.
 
-Tasks are stored in a plain Python list in memory (`tasks = [...]` at the top of `main.py`). If you create new tasks and then restart the server (`Ctrl+C` and re-run `uvicorn`), every task you added is gone — only the 3 hardcoded seed tasks come back. This happens because the list only exists inside the running process's memory; there's no file or database backing it, so nothing survives a restart. This is exactly why Week 3 introduces a real database — to make data outlive the process.
-
-## Extras built
-
-- Filtering: `GET /tasks?done=true`
-- Search: `GET /tasks?search=milk`
-- Stats endpoint: `GET /stats`
-- Seed & reset: `POST /reset`
-
-## Stage 7 — AI rematch
-
-See [`ai-version/AI_VS_ME.md`](ai-version/AI_VS_ME.md) for the full writeup: the prompt I gave
-an AI assistant, what it got right, two real bugs I found by running my Stage 4 checkpoint curls
-against its output (wrong status code on invalid input, whitespace-only titles slipping through),
-and the improved prompt + rematch that fixed both.
+*Not done*: the second stretch (add an index + before/after `EXPLAIN
+ANALYZE` on a seeded table) — ran out of time budget for this pass, noting
+it honestly rather than faking numbers.

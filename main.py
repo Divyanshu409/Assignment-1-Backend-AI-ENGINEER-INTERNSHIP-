@@ -1,12 +1,20 @@
+import os
+
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
 
+from repository import SQLiteTaskRepository
+
+load_dotenv()
+
 app = FastAPI(
     title="Task API",
-    version="1.0",
-    description="A small in-memory to-do list API built for FlyRank Internship Week 2, Assignment A1.",
+    version="3.0",
+    description="A to-do list API. SQLite for A2, swappable to Postgres for A3 — "
+    "same service/routes either way.",
 )
 
 
@@ -24,31 +32,59 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})
 
 
+# --- Repository selection: the ONLY place that knows which backend is running. ---
+# Routes below call `repo.*` and never see SQL directly, regardless of backend.
+
+DB_BACKEND = os.getenv("DB_BACKEND", "sqlite")
+
+if DB_BACKEND == "postgres":
+    from postgres_repository import PostgresTaskRepository
+
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    if not DATABASE_URL:
+        raise RuntimeError("DB_BACKEND=postgres but DATABASE_URL is not set (check .env)")
+    repo = PostgresTaskRepository(DATABASE_URL)
+else:
+    repo = SQLiteTaskRepository(os.getenv("SQLITE_DB_FILE", "tasks.db"))
+
+
+@app.on_event("startup")
+def on_startup():
+    repo.init()
+
+
 @app.get("/", summary="API info", description="Returns basic metadata about this API.")
 def root():
     return {
         "name": "Task API",
-        "version": "1.0",
+        "version": "3.0",
+        "backend": DB_BACKEND,
         "endpoints": ["/tasks"],
     }
 
 
 @app.get("/health", summary="Health check", description="Returns ok if the server is alive.")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "backend": DB_BACKEND}
 
 
-# In-memory "database" — resets whenever the server restarts.
-tasks = [
-    {"id": 1, "title": "Buy milk", "done": False},
-    {"id": 2, "title": "Write README", "done": False},
-    {"id": 3, "title": "Learn FastAPI", "done": True},
-]
-next_id = 4
+@app.get(
+    "/redis-health",
+    summary="Redis health check (stretch)",
+    description="Pings Redis via REDIS_URL. Returns ok:false if Redis isn't configured or unreachable.",
+)
+def redis_health():
+    redis_url = os.getenv("REDIS_URL")
+    if not redis_url:
+        return {"ok": False, "detail": "REDIS_URL not set"}
+    try:
+        import redis
 
-
-def find_task(task_id: int):
-    return next((t for t in tasks if t["id"] == task_id), None)
+        r = redis.from_url(redis_url, socket_connect_timeout=2)
+        r.ping()
+        return {"ok": True}
+    except Exception as exc:
+        return {"ok": False, "detail": str(exc)}
 
 
 @app.get(
@@ -57,31 +93,17 @@ def find_task(task_id: int):
     description="Returns all tasks. Supports optional filtering by `done` and `search` query params.",
 )
 def list_tasks(done: Optional[bool] = None, search: Optional[str] = None):
-    result = tasks
-    if done is not None:
-        result = [t for t in result if t["done"] == done]
-    if search:
-        result = [t for t in result if search.lower() in t["title"].lower()]
-    return result
+    return repo.list(done=done, search=search)
 
 
 @app.get("/stats", summary="Task stats", description="Returns counts of total, done, and open tasks.")
 def stats():
-    total = len(tasks)
-    done_count = sum(1 for t in tasks if t["done"])
-    return {"total": total, "done": done_count, "open": total - done_count}
+    return repo.stats()
 
 
-@app.post("/reset", summary="Reset tasks", description="Restores the 3 example tasks. Handy for demos.")
+@app.post("/reset", summary="Reset tasks", description="Wipes and restores the 3 example tasks. Handy for demos.")
 def reset_tasks():
-    global tasks, next_id
-    tasks = [
-        {"id": 1, "title": "Buy milk", "done": False},
-        {"id": 2, "title": "Write README", "done": False},
-        {"id": 3, "title": "Learn FastAPI", "done": True},
-    ]
-    next_id = 4
-    return tasks
+    return repo.reset()
 
 
 @app.get(
@@ -90,7 +112,7 @@ def reset_tasks():
     description="Returns a single task by id, or 404 if it doesn't exist.",
 )
 def get_task(task_id: int):
-    task = find_task(task_id)
+    task = repo.get(task_id)
     if task is None:
         raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
     return task
@@ -103,14 +125,9 @@ def get_task(task_id: int):
     description="Creates a new task. Requires a non-empty 'title'.",
 )
 def create_task(payload: TaskCreate):
-    global next_id
     if not payload.title or not payload.title.strip():
         raise HTTPException(status_code=400, detail="'title' is required and cannot be empty")
-
-    task = {"id": next_id, "title": payload.title.strip(), "done": False}
-    tasks.append(task)
-    next_id += 1
-    return task
+    return repo.create(payload.title.strip())
 
 
 @app.put(
@@ -119,19 +136,15 @@ def create_task(payload: TaskCreate):
     description="Replaces a task's title and/or done status.",
 )
 def update_task(task_id: int, payload: TaskUpdate):
-    task = find_task(task_id)
-    if task is None:
-        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
-
     if payload.title is None and payload.done is None:
         raise HTTPException(status_code=400, detail="Provide at least 'title' or 'done' to update")
     if payload.title is not None and not payload.title.strip():
         raise HTTPException(status_code=400, detail="'title' cannot be empty")
 
-    if payload.title is not None:
-        task["title"] = payload.title.strip()
-    if payload.done is not None:
-        task["done"] = payload.done
+    title = payload.title.strip() if payload.title is not None else None
+    task = repo.update(task_id, title=title, done=payload.done)
+    if task is None:
+        raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
     return task
 
 
@@ -142,8 +155,6 @@ def update_task(task_id: int, payload: TaskUpdate):
     description="Removes a task by id.",
 )
 def delete_task(task_id: int):
-    task = find_task(task_id)
-    if task is None:
+    if not repo.delete(task_id):
         raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
-    tasks.remove(task)
     return None

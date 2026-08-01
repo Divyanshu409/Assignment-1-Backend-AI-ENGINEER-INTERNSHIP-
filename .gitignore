@@ -3,3 +3,6 @@ __pycache__/
 venv/
 .venv/
 server.log
+.env
+tasks.db
+pgdata/
