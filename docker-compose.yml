@@ -29,8 +29,7 @@ services:
     env_file:
       - .env
     environment:
-      # override so the app reaches Postgres/Redis by service name, not localhost,
-      # regardless of what's in .env for host use
+
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       REDIS_URL: redis://redis:6379/0
     ports:
