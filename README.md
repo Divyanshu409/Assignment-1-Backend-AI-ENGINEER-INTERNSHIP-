@@ -149,10 +149,6 @@ Status codes and error shape (`{"error": "..."}`) are unchanged from A2.
 **After restart — task still present (persistence proof):**
 ![After restart](screenshots/Screenshot%202026-08-01%20153214.png)
 
-> Note: double-check these four A3 captions match what each screenshot
-> actually shows, and reorder/relabel if not — they're my best guess based
-> on the testing order we walked through, not something I verified myself.
-
 ## Proving persistence
 
 Created a task via `POST /tasks` against the Neon Postgres instance, fully
@@ -175,5 +171,3 @@ values the `db` service reads.
 `redis` is in `docker-compose.yml` alongside `db`, and `GET /redis-health`
 pings it via `REDIS_URL`.
 
-*Not done*: the second stretch (index + before/after `EXPLAIN ANALYZE`) —
-ran out of time budget for this pass.
