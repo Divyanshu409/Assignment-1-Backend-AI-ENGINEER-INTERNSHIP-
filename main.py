@@ -32,9 +32,6 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"error": exc.detail})
 
 
-# --- Repository selection: the ONLY place that knows which backend is running. ---
-# Routes below call `repo.*` and never see SQL directly, regardless of backend.
-
 DB_BACKEND = os.getenv("DB_BACKEND", "sqlite")
 
 if DB_BACKEND == "postgres":
