@@ -118,36 +118,36 @@ Status codes and error shape (`{"error": "..."}`) are unchanged from A2.
 
 ### A1 — in-memory version
 
-![A1 screenshot 1](Screenshot%202026-07-28%20235346.png)
-![A1 screenshot 2](Screenshot%202026-07-28%20235816.png)
-![A1 screenshot 3](Screenshot%202026-07-29%20000301.png)
-![A1 screenshot 4](Screenshot%202026-07-29%20000457.png)
-![A1 screenshot 5](Screenshot%202026-07-29%20000609.png)
-![A1 screenshot 6](Screenshot%202026-07-29%20000654.png)
-![A1 screenshot 7](Screenshot%202026-07-29%20000713.png)
-![A1 screenshot 8](Screenshot%202026-07-29%20000954.png)
+![A1 screenshot 1](screenshots/Screenshot%202026-07-28%20235346.png)
+![A1 screenshot 2](screenshots/Screenshot%202026-07-28%20235816.png)
+![A1 screenshot 3](screenshots/Screenshot%202026-07-29%20000301.png)
+![A1 screenshot 4](screenshots/Screenshot%202026-07-29%20000457.png)
+![A1 screenshot 5](screenshots/Screenshot%202026-07-29%20000609.png)
+![A1 screenshot 6](screenshots/Screenshot%202026-07-29%20000654.png)
+![A1 screenshot 7](screenshots/Screenshot%202026-07-29%20000713.png)
+![A1 screenshot 8](screenshots/Screenshot%202026-07-29%20000954.png)
 
 ### A2 — SQLite version
 
-![A2 screenshot 1](Screenshot%202026-07-30%20150329.png)
-![A2 screenshot 2](Screenshot%202026-07-30%20150413.png)
-![A2 screenshot 3](Screenshot%202026-07-30%20150449.png)
-![A2 screenshot 4](Screenshot%202026-07-30%20150651.png)
-![A2 screenshot 5](Screenshot%202026-07-30%20150953.png)
+![A2 screenshot 1](screenshots/Screenshot%202026-07-30%20150329.png)
+![A2 screenshot 2](screenshots/Screenshot%202026-07-30%20150413.png)
+![A2 screenshot 3](screenshots/Screenshot%202026-07-30%20150449.png)
+![A2 screenshot 4](screenshots/Screenshot%202026-07-30%20150651.png)
+![A2 screenshot 5](screenshots/Screenshot%202026-07-30%20150953.png)
 
 ### A3 — Postgres version (this assignment)
 
 **GET / — confirms `"backend": "postgres"`:**
-![GET root backend check](Screenshot%202026-08-01%20152320.png)
+![GET root backend check](screenshots/Screenshot%202026-08-01%20152320.png)
 
 **GET /tasks — seed rows returned from Postgres:**
-![GET tasks seed proof](Screenshot%202026-08-01%20152907.png)
+![GET tasks seed proof](screenshots/Screenshot%202026-08-01%20152907.png)
 
 **Before restart — task created:**
-![Before restart](Screenshot%202026-08-01%20153055.png)
+![Before restart](screenshots/Screenshot%202026-08-01%20153055.png)
 
 **After restart — task still present (persistence proof):**
-![After restart](Screenshot%202026-08-01%20153214.png)
+![After restart](screenshots/Screenshot%202026-08-01%20153214.png)
 
 > Note: double-check these four A3 captions match what each screenshot
 > actually shows, and reorder/relabel if not — they're my best guess based
@@ -175,3 +175,5 @@ values the `db` service reads.
 `redis` is in `docker-compose.yml` alongside `db`, and `GET /redis-health`
 pings it via `REDIS_URL`.
 
+*Not done*: the second stretch (index + before/after `EXPLAIN ANALYZE`) —
+ran out of time budget for this pass.
