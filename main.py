@@ -1,21 +1,25 @@
 import os
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
+
+load_dotenv()
+
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
 
 from repository import SQLiteTaskRepository
-
-load_dotenv()
+from auth import router as auth_router, get_current_user
 
 app = FastAPI(
     title="Task API",
-    version="3.0",
-    description="A to-do list API. SQLite for A2, swappable to Postgres for A3 — "
-    "same service/routes either way.",
+    version="4.0",
+    description="A to-do list API. SQLite for A2, swappable to Postgres for A3, "
+    "Supabase-backed auth for A4 — same service/routes either way.",
 )
+
+app.include_router(auth_router)
 
 
 class TaskCreate(BaseModel):
@@ -54,10 +58,20 @@ def on_startup():
 def root():
     return {
         "name": "Task API",
-        "version": "3.0",
+        "version": "4.0",
         "backend": DB_BACKEND,
-        "endpoints": ["/tasks"],
+        "endpoints": ["/tasks", "/auth/signup", "/auth/login", "/auth/logout",
+                      "/public/info", "/protected/profile", "/protected/dashboard"],
     }
+
+
+@app.get(
+    "/protected/dashboard",
+    summary="Protected dashboard",
+    description="Second protected route using the same get_current_user dependency as /protected/profile.",
+)
+def protected_dashboard(user=Depends(get_current_user)):
+    return {"message": f"Welcome back, {user.email}", "task_count": repo.stats()}
 
 
 @app.get("/health", summary="Health check", description="Returns ok if the server is alive.")
@@ -67,7 +81,7 @@ def health():
 
 @app.get(
     "/redis-health",
-    summary="Redis health check (stretch)",
+    summary="Redis health check",
     description="Pings Redis via REDIS_URL. Returns ok:false if Redis isn't configured or unreachable.",
 )
 def redis_health():
@@ -85,6 +99,28 @@ def redis_health():
 
 
 @app.get(
+    "/public/info",
+    summary="Public info",
+    description="Unprotected route. No token required.",
+)
+def public_info():
+    return {"message": "Welcome stranger! This info is public."}
+
+
+@app.get(
+    "/protected/profile",
+    summary="Read private profile",
+    description="Protected route. Requires a valid bearer token from /auth/login.",
+)
+def protected_profile(user=Depends(get_current_user)):
+    return {
+        "id": user.id,
+        "email": user.email,
+        "created_at": user.created_at,
+    }
+
+
+@app.get(
     "/tasks",
     summary="List tasks",
     description="Returns all tasks. Supports optional filtering by `done` and `search` query params.",
@@ -98,7 +134,7 @@ def stats():
     return repo.stats()
 
 
-@app.post("/reset", summary="Reset tasks", description="Wipes and restores the 3 example tasks. Handy for demos.")
+@app.post("/reset", summary="Reset tasks", description="Wipes and restores the 3 example tasks.")
 def reset_tasks():
     return repo.reset()
 
